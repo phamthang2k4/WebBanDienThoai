@@ -28,7 +28,11 @@
 
 <body>
 
-    @await Html.PartialAsync("_Header")
+    @{
+        var pageTitle = ViewData["Title"]?.ToString() ?? "Home Page";
+    }
+
+    @await Html.PartialAsync("_HeaderPage",new {PageTitle = pageTitle })
 
     <main>
         @RenderBody()

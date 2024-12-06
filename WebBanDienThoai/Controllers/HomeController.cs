@@ -1,11 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using WebBanDienThoai.Models;
+using X.PagedList;
 
 namespace WebBanDienThoai.Controllers
 {
     public class HomeController : Controller
     {
+        BtlLtwQlbdtContext db = new BtlLtwQlbdtContext();
         private readonly ILogger<HomeController> _logger;
 
         public HomeController(ILogger<HomeController> logger)
@@ -13,9 +16,13 @@ namespace WebBanDienThoai.Controllers
             _logger = logger;
         }
 
-        public IActionResult Index()
+        public IActionResult Index(int? page)
         {
-            return View();
+            int pageSize = 8;
+            int pageNumber = page == null || page < 0 ? 1 : page.Value;
+            var lstSanPham = db.SanPhams.AsNoTracking().OrderBy(x => x.MaHang);
+            PagedList<SanPham> lst = new PagedList<SanPham>(lstSanPham, pageNumber, pageSize);
+            return View(lst);
         }
 
         public IActionResult Privacy()
