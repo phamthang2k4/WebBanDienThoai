@@ -1,7 +1,14 @@
+using Microsoft.EntityFrameworkCore;
+using WebBanDienThoai.Models;
+using WebBanDienThoai.Repository;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+var connectionString = builder.Configuration.GetConnectionString("BtlLtwQlbdtContext");
+builder.Services.AddDbContext<BtlLtwQlbdtContext>(x => x.UseSqlServer(connectionString));
+builder.Services.AddScoped<IHangSpRepository, HangSpRepository>();
 
 var app = builder.Build();
 
