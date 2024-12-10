@@ -1,8 +1,49 @@
-﻿
-@model IEnumerable<Hang>
-<div class="navbar-nav w-100 overflow-hidden" style="height: 410px">
-            @foreach (var item in Model)
-            {
-                 <a href="" class="nav-item nav-link">@item.TenHang</a>
-            }
+﻿@model IEnumerable<Hang>
+<div class="navbar-nav w-100 overflow-hidden" style="height: 245px">
+    @foreach (var item in Model)
+    {
+        var getUrl = "https://localhost:7180/api/productapi/" + item.MaHang;
+        <a style="cursor:pointer" onclick="showProduct('@getUrl')" class="nav-item nav-link">@item.TenHang</a>
+    }
 </div>
+
+
+<script>
+    function showProduct(getUrl) {
+        var str = '';
+
+        $.ajax({
+            type: 'GET',
+            url: getUrl,
+            dataType: 'json',
+            success: function (data) {
+                $.each(data, function (key, val) {
+
+                    str += `<div class="col-lg-3 col-md-6 col-sm-12 pb-1">
+                        <div class="card product-item border-0 mb-4">
+                            <div class="card-header product-img position-relative overflow-hidden bg-transparent border p-0">
+                                        <img class="img-fluid w-100" src="../PhoneImages/Images/${val.anhDaiDien}" alt="">
+                            </div>
+                            <div class="card-body border-left border-right text-center p-0 pt-4 pb-3">
+                                <h6 class="text-truncate mb-3">${val.tenSanPham}</h6>
+                                <div class="d-flex justify-content-center">
+                                            <h6>${val.donGiaBanRa}</h6 > <h6 class="text-muted ml-2"><del>${val.donGiaBanRa}</del></h6>
+                                </div>
+                            </div>
+                            <div class="card-footer d-flex justify-content-between bg-light border">
+                                <a href="" class="btn btn-sm text-dark p-0"><i class="fas fa-eye text-primary mr-1"></i>View Detail</a>
+                                <a href="" class="btn btn-sm text-dark p-0"><i class="fas fa-shopping-cart text-primary mr-1"></i>Add To Cart</a>
+                            </div>
+                        </div>
+                    </div>`
+
+                });
+                $('#displayProducts').html(str);
+
+            },
+            error: function (xhr) {
+                alert(xhr.responseText)
+            }
+        });
+    }
+</script>
