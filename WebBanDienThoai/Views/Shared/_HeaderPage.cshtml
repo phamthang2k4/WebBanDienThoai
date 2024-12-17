@@ -74,7 +74,7 @@
                 </button>
                 <div class="collapse navbar-collapse justify-content-between" id="navbarCollapse">
                     <div class="navbar-nav mr-auto py-0">
-                        <a asp-controller="Home" asp-action="index" class="nav-item nav-link active">Home</a>
+                        <a asp-controller="Home" asp-action="index" class="nav-item nav-link    ">Home</a>
                         <a asp-controller="Shop" asp-action="index" class="nav-item nav-link">Shop</a>
                         <a asp-controller="Detail" asp-action="index" class="nav-item nav-link">Shop Detail</a>
                         <div class="nav-item dropdown">
@@ -109,3 +109,22 @@
     </div>
 </div>
 <!-- Page Header End -->
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const navLinks = document.querySelectorAll(".navbar-nav .nav-link");
+        navLinks.forEach(link => {
+            link.addEventListener("click", function () {
+                navLinks.forEach(item => item.classList.remove("active"));
+                this.classList.add("active");
+            });
+        });
+
+        const currentUrl = window.location.pathname;
+        navLinks.forEach(link => {
+            if (link.getAttribute("href") === currentUrl) {
+                link.classList.add("active");
+            }
+        });
+    });
+</script>
