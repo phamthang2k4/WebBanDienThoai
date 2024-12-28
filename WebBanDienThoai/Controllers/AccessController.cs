@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using WebBanDienThoai.Helpers;
 using WebBanDienThoai.Models;
+using WebBanDienThoai.ViewModels;
 
 namespace WebBanDienThoai.Controllers
 {
@@ -133,6 +134,76 @@ namespace WebBanDienThoai.Controllers
 
             // Redirect về trang login
             return RedirectToAction("Login", "Access");
+        }
+
+        [HttpGet]
+        public IActionResult Register()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public IActionResult Register(RegisterVM model, IFormFile Hinh)
+        {
+            if (ModelState.IsValid)
+            {
+                // Kiểm tra trùng tên đăng nhập
+                var existingAccount = db.TaiKhoans.FirstOrDefault(x => x.TenDangNhap == model.TaiKhoan);
+                if (existingAccount != null)
+                {
+                    ModelState.AddModelError("TaiKhoan", "Tên đăng nhập đã tồn tại.");
+                    return View(model);
+                }
+
+
+                var khachHang = new KhachHang
+                {
+                    MaKhachHang = MyUtil.GenerateRamdomKey(),
+                    TenKhachHang = model.HoTen,
+                    NgaySinh = model.NgaySinh,
+                    SoDienThoai = model.DienThoai,
+                    DiaChi = model.DiaChi,
+                    Email = model.Email,
+                    TenDangNhap = model.TaiKhoan,
+                    // Thêm 2 trường tọa độ
+                    DiaChiLatitude = model.DiaChiLatitude,
+                    DiaChiLongitude = model.DiaChiLongitude
+                };
+
+
+                string hashedPassword = model.MatKhau.ToSHA256Hash("MySaltKey");
+                var taiKhoan = new TaiKhoan
+                {
+                    TenDangNhap = model.TaiKhoan,
+                    MatKhau = hashedPassword,
+                    LoaiTaiKhoan = "customer"
+                };
+
+
+                if (Hinh != null)
+                {
+                    khachHang.AnhDaiDien = MyUtil.UploadHinh(Hinh, "Customer");
+
+                }
+
+                db.KhachHangs.Add(khachHang);
+                db.TaiKhoans.Add(taiKhoan);
+                db.SaveChanges();
+
+                // Set session values
+                HttpContext.Session.SetString("Username", khachHang.TenDangNhap);
+                HttpContext.Session.SetString("HoTen", khachHang.TenKhachHang);
+                HttpContext.Session.SetString("NgaySinh", khachHang.NgaySinh.ToString());
+                HttpContext.Session.SetString("SoDienThoai", khachHang.SoDienThoai);
+                HttpContext.Session.SetString("DiaChi", khachHang.DiaChi);
+                HttpContext.Session.SetString("Email", khachHang.Email);
+                HttpContext.Session.SetString("GhiChu", khachHang.GhiChu ?? "");
+                HttpContext.Session.SetString("Avatar", Url.Content("~/Images/Customer/" + khachHang.AnhDaiDien));
+                HttpContext.Session.SetString("Role", "Customer");
+
+                return RedirectToAction("Index", "Home");
+            }
+            return View(model);
         }
 
     }
