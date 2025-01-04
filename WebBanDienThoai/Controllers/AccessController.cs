@@ -1,7 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Mvc;
 using WebBanDienThoai.Helpers;
 using WebBanDienThoai.Models;
 using WebBanDienThoai.ViewModels;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 
 namespace WebBanDienThoai.Controllers
 {
@@ -66,11 +72,11 @@ namespace WebBanDienThoai.Controllers
                             HttpContext.Session.SetString("Username", userInfo.TenDangNhap);
                             HttpContext.Session.SetString("MaKhachHang", userInfo.MaKhachHang);
                             HttpContext.Session.SetString("HoTen", userInfo.TenKhachHang);
-                            HttpContext.Session.SetString("NgaySinh", $"{userInfo.NgaySinh}");
-                            HttpContext.Session.SetString("SoDienThoai", userInfo.SoDienThoai);
-                            HttpContext.Session.SetString("DiaChi", userInfo.DiaChi);
-                            HttpContext.Session.SetString("Email", userInfo.Email);
-                            HttpContext.Session.SetString("GhiChu", userInfo.GhiChu ?? "");
+                            //HttpContext.Session.SetString("NgaySinh", $"{userInfo.NgaySinh}");
+                            //HttpContext.Session.SetString("SoDienThoai", userInfo.SoDienThoai);
+                            //HttpContext.Session.SetString("DiaChi", userInfo.DiaChi);
+                            //HttpContext.Session.SetString("Email", userInfo.Email);
+                            //HttpContext.Session.SetString("GhiChu", userInfo.GhiChu ?? "");
                             HttpContext.Session.SetString("Avatar", Url.Content("~/Images/Customer/" + userInfo.AnhDaiDien));
                             HttpContext.Session.SetString("Role", "Customer");
 
@@ -120,8 +126,25 @@ namespace WebBanDienThoai.Controllers
             return View();
         }
 
+        //[HttpGet]
+        //public IActionResult Logout()
+        //{
+        //    // Xóa session
+        //    HttpContext.Session.Clear();
+
+        //    // Xóa cookies nếu có
+        //    foreach (var cookie in Request.Cookies.Keys)
+        //    {
+        //        Response.Cookies.Delete(cookie);
+        //    }
+
+
+        //    // Redirect về trang login
+        //    return RedirectToAction("Login", "Access");
+        //}
+
         [HttpGet]
-        public IActionResult Logout()
+        public async Task<IActionResult> Logout(string returnUrl = "/Access/Login")
         {
             // Xóa session
             HttpContext.Session.Clear();
@@ -132,8 +155,9 @@ namespace WebBanDienThoai.Controllers
                 Response.Cookies.Delete(cookie);
             }
 
-            // Redirect về trang login
-            return RedirectToAction("Login", "Access");
+            await HttpContext.SignOutAsync();
+
+            return Redirect(returnUrl);
         }
 
         [HttpGet]
@@ -149,9 +173,17 @@ namespace WebBanDienThoai.Controllers
             {
                 // Kiểm tra trùng tên đăng nhập
                 var existingAccount = db.TaiKhoans.FirstOrDefault(x => x.TenDangNhap == model.TaiKhoan);
+                // Kiểm tra trùng email
+                var existingEmail = db.KhachHangs.FirstOrDefault(x => x.Email == model.Email);
+
                 if (existingAccount != null)
                 {
                     ModelState.AddModelError("TaiKhoan", "Tên đăng nhập đã tồn tại.");
+                    return View(model);
+                }
+                else if (existingEmail != null)
+                {
+                    ModelState.AddModelError("TaiKhoan", "Email đã tồn tại.");
                     return View(model);
                 }
 
@@ -206,5 +238,118 @@ namespace WebBanDienThoai.Controllers
             return View(model);
         }
 
+        public async Task LoginByGoogle()
+        {
+            // Use Google authentication scheme for challenge
+            await HttpContext.ChallengeAsync(GoogleDefaults.AuthenticationScheme,
+                new AuthenticationProperties
+                {
+                    RedirectUri = Url.Action("GoogleResponse")
+                });
+        }
+        public async Task<IActionResult> GoogleResponse()
+        {
+            
+            // Authenticate using Google scheme
+            var result = await HttpContext.AuthenticateAsync(GoogleDefaults.AuthenticationScheme);
+
+            if (!result.Succeeded)
+            {
+                //Nếu xác thực ko thành công quay về trang Login
+                return RedirectToAction("Login");
+            }
+
+            var claims = result.Principal.Identities.FirstOrDefault().Claims.Select(claim => new
+            {
+                claim.Issuer,
+                claim.OriginalIssuer,
+                claim.Type,
+                claim.Value
+            });
+            var email = claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+            var name = claims.FirstOrDefault(c => c.Type == ClaimTypes.GivenName)?.Value;
+            string emailName = email.Split('@')[0];
+            //return Json(claims);
+
+
+            // Check email có tồn tại không
+            var existingUser = await db.KhachHangs.FirstOrDefaultAsync(u => u.Email == email);
+            // Kiểm tra trùng tên đăng nhập
+            var existingAccount = db.TaiKhoans.FirstOrDefault(x => x.TenDangNhap == emailName);
+
+            if (existingUser == null && existingAccount == null)
+            {
+
+                var khachHang = new KhachHang
+                {
+                    MaKhachHang = MyUtil.GenerateRamdomKey(),
+                    TenKhachHang = name,
+                    Email = email,
+                    TenDangNhap = emailName,
+                };
+
+                // //nếu user ko tồn tại trong db thì tạo user mới với password hashed mặc định 1-9
+                string passwordDefault = "123456789";
+                string hashedPassword = passwordDefault.ToSHA256Hash("MySaltKey");
+                var taiKhoan = new TaiKhoan
+                {
+                    TenDangNhap = emailName,
+                    MatKhau = hashedPassword,
+                    LoaiTaiKhoan = "customer"
+                };
+                // Set session values
+                HttpContext.Session.SetString("Username", khachHang.TenDangNhap);
+                HttpContext.Session.SetString("HoTen", khachHang.TenKhachHang);
+                HttpContext.Session.SetString("Email", khachHang.Email);
+
+                db.KhachHangs.Add(khachHang);
+                db.TaiKhoans.Add(taiKhoan);
+                db.SaveChanges();
+
+                return RedirectToAction("Index", "Home");
+
+
+            }
+            else
+            {
+
+                // Xử lý đăng nhập cho khách hàng
+                var userInfo = (from tk in db.TaiKhoans
+                                join kh in db.KhachHangs on tk.TenDangNhap equals kh.TenDangNhap
+                                where tk.TenDangNhap == emailName
+                                select new
+                                {
+                                    tk.TenDangNhap,
+                                    kh.AnhDaiDien,
+                                    kh.MaKhachHang,
+                                    kh.TenKhachHang,
+                                    kh.NgaySinh,
+                                    kh.SoDienThoai,
+                                    kh.DiaChi,
+                                    kh.Email,
+                                    kh.GhiChu
+                                }).FirstOrDefault();
+
+                if (userInfo != null)
+                {
+                    HttpContext.Session.SetString("Username", userInfo.TenDangNhap);
+                    HttpContext.Session.SetString("MaKhachHang", userInfo.MaKhachHang);
+                    HttpContext.Session.SetString("HoTen", userInfo.TenKhachHang);
+                    //HttpContext.Session.SetString("NgaySinh", $"{userInfo.NgaySinh}");
+                    //HttpContext.Session.SetString("SoDienThoai", userInfo.SoDienThoai);
+                    //HttpContext.Session.SetString("DiaChi", userInfo.DiaChi);
+                    //HttpContext.Session.SetString("Email", userInfo.Email);
+                    //HttpContext.Session.SetString("GhiChu", userInfo.GhiChu ?? "");
+                    HttpContext.Session.SetString("Avatar", Url.Content("~/Images/Customer/" + userInfo.AnhDaiDien));
+                    HttpContext.Session.SetString("Role", "Customer");
+
+                    return RedirectToAction("Index", "Home");
+                }
+
+            }
+
+            return RedirectToAction("Login");
+
+        }
     }
 }
