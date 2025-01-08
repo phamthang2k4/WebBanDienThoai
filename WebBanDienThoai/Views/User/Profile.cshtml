@@ -3,6 +3,19 @@
     ViewData["Title"] = "Profile";
     Layout = "~/Views/Shared/_LayoutPhone.cshtml";
 }
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+    </div>
+}
 <!-- Page Header End -->
 <div class="container-fluid">
     <div class="row px-xl-5">
@@ -22,7 +35,7 @@
                                     <div class="avatar position-relative mb-3">
                                         @if (!string.IsNullOrEmpty(Model.AnhDaiDien))
                                         {
-                                            <img src="@Model.AnhDaiDien" alt="profile_image" id="preview"
+                                            <img src="~/Images/Customer/@Model.AnhDaiDien" alt="profile_image" id="preview"
                                                  class="border-radius-lg shadow-sm" style="width: 200px; height: 200px; object-fit: cover; border-radius: 50%;">
                                         }
                                         else
@@ -286,7 +299,35 @@
     .small {
         font-size: 0.8rem;
     }
+
+    .alert {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .alert-success {
+        background-color: #d4edda;
+        border-color: #c3e6cb;
+        color: #155724;
+    }
+
+    .alert-danger {
+        background-color: #f8d7da;
+        border-color: #f5c6cb;
+        color: #721c24;
+    }
 </style>
+
+<script>
+        // Tự động ẩn alert sau 3 giây
+        setTimeout(function () {
+            $('.alert').alert('close');
+        }, 3000);
+</script>
 
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBqIm1BH4Z2iXUobBw9w98dpCIIyRLP-QE&libraries=places,geometry"></script>
 
