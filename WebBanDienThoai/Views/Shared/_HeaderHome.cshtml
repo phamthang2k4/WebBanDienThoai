@@ -46,7 +46,7 @@
             </a>
             <a asp-controller="Cart" asp-action="index" class="btn border">
                 <i class="fas fa-shopping-cart text-primary"></i>
-                <span class="badge">0</span>
+                <span class="badge cart-count">0</span>
             </a>
         </div>
     </div>
@@ -139,3 +139,26 @@
     </div>
 </div>
 <!-- Navbar End -->
+
+
+<script>
+
+    function updateCartCount() {
+        $.ajax({
+            url: '/Home/GetCartQuantity',
+            method: 'GET',
+            success: function (quantity) {
+                $('.cart-count').text(quantity);
+            },
+            error: function (error) {
+                console.error('Error updating cart count:', error);
+            }
+        });
+    }
+
+    @* Cập nhật số lượng khi trang được tải *@
+    $(document).ready(function () {
+        updateCartCount();
+    });
+
+</script>
