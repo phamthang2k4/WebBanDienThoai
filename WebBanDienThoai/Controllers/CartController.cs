@@ -12,6 +12,37 @@ namespace WebBanDienThoai.Controllers
             _context = context;
         }
 
+        [HttpPost]
+        public IActionResult RemoveFromCart(string maSanPham, string? maMau, string? maRom)
+        {
+            string userId = HttpContext.Session.GetString("Username");
+            if (string.IsNullOrEmpty(userId)) return RedirectToAction("Login", "Access");
+
+            var gioHang = _context.GioHangs.SingleOrDefault(g => g.TenDangNhap == userId);
+            if (gioHang == null) return RedirectToAction("DetailCart");
+
+            var item = _context.ChiTietGioHangs.SingleOrDefault(c =>
+                c.MaGioHang == gioHang.MaGioHang &&
+                c.MaSanPham == maSanPham &&
+                c.ThongSoMau == maMau &&
+                c.ThongSoRom == maRom);
+
+            if (item != null)
+            {
+
+                gioHang.TongTien = CalculateTotal(userId);
+                _context.ChiTietGioHangs.Remove(item);
+                _context.SaveChanges();
+            }
+            else
+            {
+                return RedirectToAction("");
+
+            }
+
+            return RedirectToAction("index");
+        }
+
         // Tạo method tính tổng tiền
         private decimal CalculateTotal(string userId)
         {
