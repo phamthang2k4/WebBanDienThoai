@@ -44,6 +44,8 @@
 
 <body>
 
+    @await Html.PartialAsync("_AlertMessages")
+
     @{
         var pageTitle = ViewData["Title"]?.ToString() ?? "Home Page";
     }
