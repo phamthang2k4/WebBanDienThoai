@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using WebBanDienThoai.Models;
+using WebBanDienThoai.ViewModels;
 using X.PagedList;
 
 namespace WebBanDienThoai.Controllers
@@ -42,7 +43,98 @@ namespace WebBanDienThoai.Controllers
                 .Sum(c => c.SoLuong) ?? 0;
         }
 
-        public IActionResult Privacy()
+        public IActionResult ProductDetail(string maSp, string? maMau = null, string? maRom = null)
+        {
+            var sanPham = db.SanPhams.SingleOrDefault(x => x.MaSanPham == maSp) ?? new SanPham();
+            var anhSanPham = db.AnhSanPhams.Where(x => x.MaSanPham == maSp).ToList();
+            var mauSanPham = db.MauSacs.Where(x => x.MaSanPham == maSp).ToList();
+            var romSanPham = db.Roms.Where(x => x.MaSanPham == maSp)
+                        .OrderBy(x => x.Gia)
+                        .ToList();
+
+            // Sử dụng màu được chọn từ giỏ hàng nếu có, nếu không thì lấy màu đầu tiên
+            var selectedColor = !string.IsNullOrEmpty(maMau)
+                ? maMau
+                : mauSanPham.FirstOrDefault()?.MaMau;
+
+            // Lấy ảnh theo màu được chọn
+            var selectedColorImages = anhSanPham.Where(x => x.MaMau == selectedColor).ToList();
+
+            // Sử dụng ROM được chọn từ giỏ hàng nếu có, nếu không thì lấy ROM đầu tiên
+            var selectedRom = !string.IsNullOrEmpty(maRom)
+                ? romSanPham.FirstOrDefault(r => r.MaRom == maRom)
+                : romSanPham.FirstOrDefault();
+
+            // Tính giá dựa trên ROM được chọn
+            var baseRom = romSanPham.FirstOrDefault();
+            decimal? currentPrice = null;
+            if (selectedRom != null && baseRom != null)
+            {
+                currentPrice = sanPham.DonGiaBanRa + (selectedRom.Gia - baseRom.Gia);
+            }
+
+            var reviews = db.DanhGia.Where(r => r.MaSanPham == maSp).ToList();
+
+            var detailView = new ProductDetailVM
+            {
+                dmSp = sanPham,
+                dmAnhSp = selectedColorImages,  // Sử dụng ảnh của màu được chọn
+                dmMauSp = mauSanPham,
+                dmRomSp = romSanPham,
+                SelectedColor = selectedColor,  // Đặt màu được chọn
+                SelectedRom = selectedRom?.MaRom,  // Đặt ROM được chọn
+                CurrentPrice = currentPrice ?? sanPham.DonGiaBanRa,
+                Reviews = reviews
+            };
+
+            return View(detailView);
+        }
+
+        public IActionResult GetColorImages(string maSp, string maMau)
+        {
+            var anhSanPham = db.AnhSanPhams.Where(x => x.MaSanPham == maSp && x.MaMau == maMau).ToList();
+            return PartialView("_ColorImagesPartial", anhSanPham);
+        }
+
+
+        [HttpGet]
+        public IActionResult GetRomPrice(string maSp, string maRom)
+        {
+            var sanPham = db.SanPhams.SingleOrDefault(x => x.MaSanPham == maSp);
+            var romList = db.Roms.Where(x => x.MaSanPham == maSp)
+                    .OrderBy(x => x.Gia)
+                    .ToList();
+
+            var selectedRom = romList.FirstOrDefault(x => x.MaRom == maRom);
+            var baseRom = romList.FirstOrDefault(); // ROM nhỏ nhất
+
+            if (selectedRom == null || baseRom == null || sanPham == null)
+                return Json(new { success = false });
+
+            // Tính giá mới = Giá cơ bản + (Giá ROM đã chọn - Giá ROM nhỏ nhất)
+            var newPrice = sanPham.DonGiaBanRa + (selectedRom.Gia - baseRom.Gia);
+
+            string formattedPrice;
+
+            if (newPrice.HasValue)
+            {
+                formattedPrice = newPrice.Value.ToString("#,##0") + " VNĐ";
+            }
+            else
+            {
+                formattedPrice = "Giá không khả dụng";
+            }
+
+            // Sử dụng formattedPrice ở đây
+            return Json(new
+            {
+                success = true,
+                price = newPrice,
+                formattedPrice = formattedPrice
+            });
+        }
+
+        public IActionResult Privacy() 
         {
             return View();
         }

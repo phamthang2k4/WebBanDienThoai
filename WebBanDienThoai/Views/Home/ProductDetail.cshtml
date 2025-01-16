@@ -1,0 +1,9 @@
+﻿@{
+    ViewData["Title"] = "ProductDetail";
+    Layout = "~/Views/Shared/_LayoutPhone.cshtml";
+}
+@model WebBanDienThoai.ViewModels.ProductDetailVM
+
+@await Html.PartialAsync("PartialSanPham", Model)
+
+@* @await Component.InvokeAsync("TrendyProducts", new { itemCount = 4 }) *@
