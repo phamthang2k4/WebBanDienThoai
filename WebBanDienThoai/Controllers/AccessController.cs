@@ -160,6 +160,129 @@ namespace WebBanDienThoai.Controllers
             return Redirect(returnUrl);
         }
 
+        // OpenID Connect ----------------------------------------------------------------
+        [HttpGet]
+        public IActionResult LoginWithOIDC()
+        {
+            if (HttpContext.Session.GetString("Username") == null)
+            {
+                var properties = new AuthenticationProperties
+                {
+                    RedirectUri = Url.Action("OIDCCallback", "Access", null, Request.Scheme)
+                };
+
+                return Challenge(properties, "oidc");
+            }
+            return RedirectToAction("Index", "Home");
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> OIDCCallback()
+        {
+            try
+            {
+                var result = await HttpContext.AuthenticateAsync("oidc");
+                if (!result.Succeeded)
+                {
+                    return RedirectToAction("Login");
+                }
+
+                var claims = result.Principal.Claims;
+                var email = claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+                var name = claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+                string emailName = email.Split('@')[0];
+
+                if (!string.IsNullOrEmpty(email))
+                {
+
+                    // Kiểm tra user trong database
+                    var existingUser = await db.KhachHangs.FirstOrDefaultAsync(u => u.Email == email);
+                    var existingAccount = db.TaiKhoans.FirstOrDefault(x => x.TenDangNhap == emailName);
+
+                    if (existingUser == null && existingAccount == null)
+                    {
+                        
+                        // Tạo user mới
+                        var khachHang = new KhachHang
+                        {
+                            MaKhachHang = MyUtil.GenerateRamdomKey(),
+                            TenKhachHang = name ?? emailName,
+                            Email = email,
+                            TenDangNhap = emailName,
+                        };
+
+                        var taiKhoan = new TaiKhoan
+                        {
+                            TenDangNhap = emailName,
+                            MatKhau = "123456789".ToSHA256Hash("MySaltKey"),
+                            LoaiTaiKhoan = "customer"
+                        };
+
+                        db.KhachHangs.Add(khachHang);
+                        db.TaiKhoans.Add(taiKhoan);
+                        await db.SaveChangesAsync();
+
+                        // Set session
+                        HttpContext.Session.SetString("Username", emailName);
+                        HttpContext.Session.SetString("Email", email);
+                        HttpContext.Session.SetString("Role", "Customer");
+
+                        return RedirectToAction("Index", "Home");
+                    }
+                    else
+                    {
+
+                        // Xử lý đăng nhập cho khách hàng
+                        var userInfo = (from tk in db.TaiKhoans
+                                        join kh in db.KhachHangs on tk.TenDangNhap equals kh.TenDangNhap
+                                        where tk.TenDangNhap == emailName
+                                        select new
+                                        {
+                                            tk.TenDangNhap,
+                                            kh.AnhDaiDien,
+                                            kh.MaKhachHang,
+                                            kh.TenKhachHang,
+                                            kh.NgaySinh,
+                                            kh.SoDienThoai,
+                                            kh.DiaChi,
+                                            kh.Email,
+                                            kh.GhiChu
+                                        }).FirstOrDefault();
+
+                        if (userInfo != null)
+                        {
+                            HttpContext.Session.SetString("Username", userInfo.TenDangNhap);
+                            HttpContext.Session.SetString("MaKhachHang", userInfo.MaKhachHang);
+                            HttpContext.Session.SetString("HoTen", userInfo.TenKhachHang);
+                            //HttpContext.Session.SetString("NgaySinh", $"{userInfo.NgaySinh}");
+                            HttpContext.Session.SetString("SoDienThoai", userInfo.SoDienThoai ?? "098448851866");
+                            //HttpContext.Session.SetString("DiaChi", userInfo.DiaChi);
+                            //HttpContext.Session.SetString("Email", userInfo.Email);
+                            //HttpContext.Session.SetString("GhiChu", userInfo.GhiChu ?? "");
+                            HttpContext.Session.SetString("Avatar", Url.Content("~/Images/Customer/" + userInfo.AnhDaiDien));
+                            HttpContext.Session.SetString("Role", "Customer");
+
+                            return RedirectToAction("Index", "Home");
+                        }
+
+                    }
+
+                    return RedirectToAction("Login");
+
+
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error
+                Console.WriteLine($"Error in OIDCCallback: {ex.Message}");
+            }
+
+            return RedirectToAction("Login");
+        }
+
+        // OpenID Connect ----------------------------------------------------------------
+
         [HttpGet]
         public IActionResult Register()
         {
