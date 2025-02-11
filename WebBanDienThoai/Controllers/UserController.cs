@@ -40,8 +40,8 @@ namespace WebBanDienThoai.Controllers
             // Cập nhật Session với thông tin mới nhất
             HttpContext.Session.SetString("HoTen", khachHang.TenKhachHang);
             HttpContext.Session.SetString("NgaySinh", khachHang.NgaySinh.ToString());
-            HttpContext.Session.SetString("SoDienThoai", khachHang.SoDienThoai);
-            HttpContext.Session.SetString("DiaChi", khachHang.DiaChi);
+            HttpContext.Session.SetString("SoDienThoai", khachHang.SoDienThoai ?? "");
+            HttpContext.Session.SetString("DiaChi", khachHang.DiaChi ?? "");
             HttpContext.Session.SetString("Email", khachHang.Email);
             HttpContext.Session.SetString("GhiChu", khachHang.GhiChu ?? "");
             HttpContext.Session.SetString("Avatar", Url.Content("~/Images/Customer/" + khachHang.AnhDaiDien ?? ""));
