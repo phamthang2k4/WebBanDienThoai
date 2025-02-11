@@ -1,4 +1,5 @@
 ﻿using BTLW_BDT.ViewModels;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
@@ -17,6 +18,7 @@ namespace WebBanDienThoai.Controllers
             _context = context;
         }
 
+        [Authorize]
         // Action hiển thị trang Profile
         [HttpGet]
         public async Task<IActionResult> Profile()

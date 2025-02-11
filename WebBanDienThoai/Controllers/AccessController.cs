@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace WebBanDienThoai.Controllers
 {
@@ -22,18 +23,41 @@ namespace WebBanDienThoai.Controllers
 
         }
 
+        //[HttpGet]
+        //public IActionResult Login()
+        //{
+        //    if (HttpContext.Session.GetString("Username") == null)
+        //    {
+        //        return View();
+        //    }
+        //    else
+        //    {
+        //        return RedirectToAction("Index", "Home");
+        //    }
+        //}
+
+        [AllowAnonymous]
         [HttpGet]
-        public IActionResult Login()
+        public IActionResult Login(string returnUrl = "/")
         {
-            if (HttpContext.Session.GetString("Username") == null)
-            {
-                return View();
-            }
-            else
+            if (User.Identity.IsAuthenticated)
             {
                 return RedirectToAction("Index", "Home");
             }
+
+            // Bắt đầu quá trình xác thực với Auth0
+            var properties = new AuthenticationProperties
+            {
+                RedirectUri = !string.IsNullOrEmpty(returnUrl) ? returnUrl : "/"
+            };
+
+            return Challenge(properties, "Auth0");
         }
+
+
+
+
+
         [HttpPost]
         public IActionResult Login(TaiKhoan user)
         {
@@ -143,21 +167,34 @@ namespace WebBanDienThoai.Controllers
         //    return RedirectToAction("Login", "Access");
         //}
 
-        [HttpGet]
-        public async Task<IActionResult> Logout(string returnUrl = "/Access/Login")
+        //[HttpGet]
+        //public async Task<IActionResult> Logout(string returnUrl = "/Access/Login")
+        //{
+        //    // Xóa session
+        //    HttpContext.Session.Clear();
+
+        //    // Xóa cookies nếu có
+        //    foreach (var cookie in Request.Cookies.Keys)
+        //    {
+        //        Response.Cookies.Delete(cookie);
+        //    }
+
+        //    await HttpContext.SignOutAsync();
+
+        //    return Redirect(returnUrl);
+        //}
+
+        [Authorize]
+        public async Task<IActionResult> Logout()
         {
-            // Xóa session
-            HttpContext.Session.Clear();
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            await HttpContext.SignOutAsync("Auth0");
 
-            // Xóa cookies nếu có
-            foreach (var cookie in Request.Cookies.Keys)
-            {
-                Response.Cookies.Delete(cookie);
-            }
+            var auth0Domain = "dev-fk00c4u5kx0ubexk.us.auth0.com";
+            var clientId = "9fBTVNobauRhCb74lXdBIzMCx6cb7JbE";
 
-            await HttpContext.SignOutAsync();
-
-            return Redirect(returnUrl);
+            return Redirect(
+                $"https://{auth0Domain}/v2/logout?client_id={clientId}&returnTo={Url.Action("Index", "Home", null, Request.Scheme)}");
         }
 
         // OpenID Connect ----------------------------------------------------------------
